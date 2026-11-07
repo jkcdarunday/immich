@@ -6,7 +6,7 @@ import { columns } from 'src/database.js';
 import { DummyValue, GenerateSql } from 'src/decorators.js';
 import { MapAsset } from 'src/dtos/asset-response.dto.js';
 import { SearchFilter, SearchOrder } from 'src/dtos/search.dto.js';
-import { AssetStatus, AssetType, AssetVisibility, VectorIndex } from 'src/enum.js';
+import { AssetOrder, AssetStatus, AssetType, AssetVisibility, VectorIndex } from 'src/enum.js';
 import { probes } from 'src/repositories/database.repository.js';
 import { DB } from 'src/schema/index.js';
 import { AssetExifTable } from 'src/schema/tables/asset-exif.table.js';
@@ -95,6 +95,11 @@ export interface SearchEmbeddingOptions {
   userIds: string[];
 }
 
+export interface SmartSearchResultOptions {
+  order?: AssetOrder;
+  minScore?: number;
+}
+
 export interface SearchOcrOptions {
   ocr?: string;
 }
@@ -155,6 +160,7 @@ export interface AssetSearchBuilderV3Options {
 
 export type SmartSearchOptions = SearchDateOptions &
   SearchEmbeddingOptions &
+  SmartSearchResultOptions &
   SearchExifOptions &
   SearchOneToOneRelationOptions &
   Omit<SearchStatusOptions, 'visibility'> &
@@ -327,8 +333,14 @@ export class SearchRepository {
       const items = await searchAssetBuilderLegacy(trx, options)
         .select(columns.searchAsset)
         .innerJoin('smart_search', 'asset.id', 'smart_search.assetId')
-        .orderBy(sql`smart_search.embedding <=> ${options.embedding}`)
-        .orderBy('asset.id', 'asc')
+        .$if(options.minScore !== undefined, (qb) =>
+          qb.where(sql<number>`smart_search.embedding <=> ${options.embedding}`, '<=', 1 - options.minScore!),
+        )
+        .$if(options.order !== undefined, (qb) =>
+          qb.orderBy('asset.fileCreatedAt', options.order === AssetOrder.Asc ? 'asc' : 'desc'),
+        )
+        .$if(options.order === undefined, (qb) => qb.orderBy(sql`smart_search.embedding <=> ${options.embedding}`))
+        .orderBy('asset.id', options.order === AssetOrder.Desc ? 'desc' : 'asc')
         .limit(pagination.size + 1)
         .offset((pagination.page - 1) * pagination.size)
         .execute();
@@ -568,16 +580,21 @@ export class SearchRepository {
   @GenerateSql(...searchSmartV3Examples)
   searchSmartV3(
     pagination: PaginationOptions,
-    options: Omit<AssetSearchBuilderV3Options, 'order'> & { embedding: string },
+    options: Omit<AssetSearchBuilderV3Options, 'order'> & SmartSearchResultOptions & { embedding: string },
     scope: AssetSearchScope,
   ) {
+    const { order, minScore, ...assetOptions } = options;
     return this.db.transaction().execute(async (trx) => {
       await sql`set local vchordrq.probes = ${sql.lit(probes[VectorIndex.Clip])}`.execute(trx);
-      const items = await searchAssetBuilder(trx, options, scope)
+      const items = await searchAssetBuilder(trx, assetOptions, scope)
         .select(columns.searchAsset)
         .innerJoin('smart_search', 'asset.id', 'smart_search.assetId')
-        .orderBy(sql`smart_search.embedding <=> ${options.embedding}`)
-        .orderBy('asset.id', 'asc')
+        .$if(minScore !== undefined, (qb) =>
+          qb.where(sql<number>`smart_search.embedding <=> ${options.embedding}`, '<=', 1 - minScore!),
+        )
+        .$if(order !== undefined, (qb) => qb.orderBy('asset.fileCreatedAt', order === AssetOrder.Asc ? 'asc' : 'desc'))
+        .$if(order === undefined, (qb) => qb.orderBy(sql`smart_search.embedding <=> ${options.embedding}`))
+        .orderBy('asset.id', order === AssetOrder.Desc ? 'desc' : 'asc')
         .limit(pagination.take + 1)
         .offset(pagination.skip ?? 0)
         .execute();

@@ -5,6 +5,7 @@ import { Route } from '#lib/route.ts';
 import { factory } from '#test/unit/factories.ts';
 import { test } from '#test/unit/fixtures.ts';
 import type { MockRouter } from '#test/unit/mocks/router.ts';
+import { AssetOrder } from '@immich/sdk';
 import { Settings } from 'luxon';
 import { afterEach, beforeEach, describe, expect } from 'vitest';
 import { userEvent } from 'vitest/browser';
@@ -78,6 +79,69 @@ test.for([
 });
 
 const submittedTerms = (router: MockRouter) => JSON.parse(router.url.searchParams.get(QueryParameter.QUERY) ?? '{}');
+
+test.for([AssetOrder.Asc, AssetOrder.Desc])(
+  'smart search sends date order %s and minimum score',
+  async (order, { data, router, render, settle, api }) => {
+    data.userConfig.machineLearning.enabled = true;
+    await router.goto(Route.search({ query: 'beach', order, minScore: 0 }));
+    await render(Page, load);
+    await settle();
+
+    expect(api.searchSmart).toHaveBeenCalledWith({
+      body: expect.objectContaining({ query: 'beach', order, minScore: 0, page: 1 }),
+    });
+    expect(searchManager.filter.order).toBe(order);
+    expect(searchManager.filter.minScore).toBe(0);
+  },
+);
+
+test('search sort controls submit date order and minimum score', async ({ data, router, render, settle, app }) => {
+  data.userConfig.machineLearning.enabled = true;
+  await router.goto(Route.search({ query: 'beach' }));
+  await render(Page, load);
+  await settle();
+  await app.search.open();
+  await app.search.showAdvanced();
+  await app.search.filters.getByRole('button', { name: 'oldest_first', exact: true }).click();
+  await app.search.filters.getByRole('spinbutton', { name: 'search_minimum_score' }).fill('0.25');
+  await app.search.submit();
+
+  expect(submittedTerms(router)).toMatchObject({ query: 'beach', order: AssetOrder.Asc, minScore: 0.25 });
+});
+
+test('relevance and clearing the score restore the default search', async ({ data, router, render, settle, app }) => {
+  data.userConfig.machineLearning.enabled = true;
+  await router.goto(Route.search({ query: 'beach', order: AssetOrder.Desc, minScore: 0.25 }));
+  await render(Page, load);
+  await settle();
+  await app.search.open();
+  await app.search.showAdvanced();
+  await app.search.filters.getByRole('button', { name: 'search_relevance', exact: true }).click();
+  await app.search.filters.getByRole('spinbutton', { name: 'search_minimum_score' }).fill('');
+  await app.search.submit();
+
+  expect(submittedTerms(router)).toEqual({ query: 'beach' });
+});
+
+test('metadata sorting keeps the order without sending a smart search score', async ({
+  router,
+  render,
+  settle,
+  app,
+}) => {
+  await router.goto(Route.search({ originalFileName: 'beach' }));
+  await render(Page, load);
+  await settle();
+  searchManager.filter.minScore = 0.5;
+  await app.search.open();
+  await app.search.showAdvanced();
+  await app.search.filters.getByRole('button', { name: 'oldest_first', exact: true }).click();
+  await app.search.submit();
+
+  expect(submittedTerms(router)).toMatchObject({ originalFileName: 'beach', order: AssetOrder.Asc });
+  expect(submittedTerms(router)).not.toHaveProperty('minScore');
+});
 
 test('unknown lens model searches for a missing lens', async ({ router, render, settle, app }) => {
   await router.goto(Route.search({ isFavorite: true }));

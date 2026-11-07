@@ -2,7 +2,7 @@ import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { beforeEach, vitest } from 'vitest';
 import { mapAsset } from 'src/dtos/asset-response.dto.js';
 import { SearchSuggestionType } from 'src/dtos/search.dto.js';
-import { AssetVisibility } from 'src/enum.js';
+import { AssetOrder, AssetVisibility } from 'src/enum.js';
 import { SearchService } from 'src/services/search.service.js';
 import { AssetFactory } from 'test/factories/asset.factory.js';
 import { AuthFactory } from 'test/factories/auth.factory.js';
@@ -299,6 +299,18 @@ describe(SearchService.name, () => {
     beforeEach(() => {
       mocks.search.searchSmart.mockResolvedValue({ hasNextPage: false, items: [] });
       mocks.machineLearning.encodeText.mockResolvedValue('[1, 2, 3]');
+    });
+
+    it.each([undefined, {}])('should pass date ordering and minimum score to search with filter %s', async (filter) => {
+      const auth = AuthFactory.create();
+      mocks.search.searchSmartV3.mockResolvedValue({ hasNextPage: false, items: [] });
+      await sut.searchSmart(auth, { query: 'beach', size: 100, filter, order: AssetOrder.Asc, minScore: 0 });
+
+      expect(filter ? mocks.search.searchSmartV3 : mocks.search.searchSmart).toHaveBeenCalledWith(
+        filter ? { take: 100 } : { page: 1, size: 100 },
+        expect.objectContaining({ order: AssetOrder.Asc, minScore: 0, embedding: '[1, 2, 3]' }),
+        ...(filter ? [expect.objectContaining({ lockedOwnerId: auth.user.id })] : []),
+      );
     });
 
     it('should raise a BadRequestException if machine learning is disabled', async () => {

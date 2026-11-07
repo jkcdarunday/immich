@@ -28,6 +28,7 @@
   import SearchMediaSection from './SearchMediaSection.svelte';
   import SearchPeopleSection from './SearchPeopleSection.svelte';
   import SearchRatingsSection from './SearchRatingsSection.svelte';
+  import SearchSortSection from './SearchSortSection.svelte';
   import SearchTagsSection from './SearchTagsSection.svelte';
   import SearchTextSection from './SearchTextSection.svelte';
   import {
@@ -136,7 +137,9 @@
     searchManager.filter.display.isArchive ||
       searchManager.filter.display.isFavorite ||
       searchManager.filter.display.isNotInAlbum ||
-      searchManager.filter.rating,
+      searchManager.filter.rating ||
+      searchManager.filter.order !== undefined ||
+      searchManager.filter.minScore !== undefined,
   );
 
   const clear = () => {
@@ -238,6 +241,7 @@
         <div class="overflow-hidden">
           <div class="my-5 h-px w-full bg-light-200 dark:bg-dark-600"></div>
           <div class="px-5">
+            <SearchSortSection />
             <SearchCameraSection />
             {#if authManager.authenticated && authManager.preferences.ratings.enabled}
               <SearchRatingsSection />

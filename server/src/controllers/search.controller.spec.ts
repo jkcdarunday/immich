@@ -18,6 +18,22 @@ describe(SearchController.name, () => {
     ctx.reset();
   });
 
+  describe('POST /search/smart', () => {
+    it.each([-1.01, 1.01, '0.2', null])('should reject an invalid minimum score (%s)', async (minScore) => {
+      const { status } = await request(ctx.getHttpServer()).post('/search/smart').send({ query: 'beach', minScore });
+      expect(status).toBe(400);
+      expect(service.searchSmart).not.toHaveBeenCalled();
+    });
+
+    it('should reject an invalid date order', async () => {
+      const { status } = await request(ctx.getHttpServer())
+        .post('/search/smart')
+        .send({ query: 'beach', order: 'relevance' });
+      expect(status).toBe(400);
+      expect(service.searchSmart).not.toHaveBeenCalled();
+    });
+  });
+
   describe('POST /search/metadata', () => {
     it('should reject page as a string', async () => {
       const { status, body } = await request(ctx.getHttpServer()).post('/search/metadata').send({ page: 'abc' });

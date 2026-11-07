@@ -1062,6 +1062,14 @@ export const searchRandomV3Examples: GenerateSqlQueries[] = [
 
 export const searchSmartV3Examples: GenerateSqlQueries[] = [
   {
+    name: 'date-order-with-min-score',
+    params: [
+      { take: 100, skip: 100 },
+      { embedding: DummyValue.VECTOR, order: AssetOrder.Desc, minScore: 0.2 },
+      scopeExample,
+    ],
+  },
+  {
     name: 'baseline',
     params: [{ take: 100 }, { embedding: DummyValue.VECTOR }, scopeExample],
   },

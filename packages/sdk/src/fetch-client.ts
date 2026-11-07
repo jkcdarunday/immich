@@ -2710,10 +2710,14 @@ export type SmartSearchDto = {
     libraryId?: string | null;
     /** Filter by camera make */
     make?: string | null;
+    /** Minimum cosine similarity [-1, 1], inclusive; omit to include all scores */
+    minScore?: number;
     /** Filter by camera model */
     model?: string | null;
     /** Filter by OCR text content */
     ocr?: string;
+    /** Sort by capture date; omit to sort by relevance */
+    order?: AssetOrder;
     /** Page number */
     page?: number;
     /** Filter by person IDs */

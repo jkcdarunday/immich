@@ -29525,6 +29525,19 @@
             ],
             "x-immich-state": "Deprecated"
           },
+          "minScore": {
+            "description": "Minimum cosine similarity [-1, 1], inclusive; omit to include all scores",
+            "format": "double",
+            "maximum": 1,
+            "minimum": -1,
+            "type": "number",
+            "x-immich-history": [
+              {
+                "version": "v3.2.0",
+                "state": "Added"
+              }
+            ]
+          },
           "model": {
             "deprecated": true,
             "description": "Filter by camera model",
@@ -29565,6 +29578,16 @@
               }
             ],
             "x-immich-state": "Deprecated"
+          },
+          "order": {
+            "$ref": "#/components/schemas/AssetOrder",
+            "description": "Sort by capture date; omit to sort by relevance",
+            "x-immich-history": [
+              {
+                "version": "v3.2.0",
+                "state": "Added"
+              }
+            ]
           },
           "page": {
             "deprecated": true,

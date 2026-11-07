@@ -37,6 +37,14 @@ Use this mode when you know a folder name or part of the original asset path.
 
 Example: for /John/Projects/3D_Printing/2026-07-01/IMG_0001.jpg, searches like Projects, 3D, Printing, or 2026 match the asset.
 
+### Sorting search results
+
+Open **Advanced filters** to sort results by capture date, with **Newest first** or **Oldest first**. Contextual searches default to **Relevance**. Date ordering applies to all matching results before pagination, not just the photos already loaded.
+
+For contextual searches, an optional **Minimum similarity score** excludes less relevant results in either sort mode. This is cosine similarity from -1 to 1, not a percentage or probability, and scores vary between models. Leave it empty to keep the existing unfiltered behavior. When sorting by date, set a minimum score to avoid including unrelated photos that also have search embeddings.
+
+API clients can pass `order: "ASC"` or `order: "DESC"` and an optional `minScore` to `/search/smart`, with either legacy fields or a structured `filter`. Omit `order` for relevance sorting. The minimum score is inclusive and is applied before pagination.
+
 ## Configuration
 
 Navigating to `Administration > Settings > Machine Learning Settings > Smart Search` will show the options available.

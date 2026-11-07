@@ -62,6 +62,8 @@ class SearchManager {
       ocr: searchQuery.ocr,
       queryType,
       queryAssetId: 'queryAssetId' in searchQuery ? searchQuery.queryAssetId : undefined,
+      order: searchQuery.order,
+      minScore: 'minScore' in searchQuery ? searchQuery.minScore : undefined,
       personIds: new SvelteSet('personIds' in searchQuery ? searchQuery.personIds : []),
       tagIds:
         'tagIds' in searchQuery
@@ -111,6 +113,9 @@ class SearchManager {
     return {
       query: this.filter.queryType === 'smart' ? query : undefined,
       queryAssetId: this.filter.queryAssetId || undefined,
+      order: this.filter.order,
+      minScore:
+        (this.filter.queryType === 'smart' && query) || this.filter.queryAssetId ? this.filter.minScore : undefined,
       ocr: this.filter.queryType === 'ocr' ? query : undefined,
       originalFileName: this.filter.queryType === 'metadata' ? query : undefined,
       description: this.filter.queryType === 'description' ? query : undefined,

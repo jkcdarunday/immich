@@ -63,7 +63,7 @@
   let scrollY = $state(0);
   let scrollYHistory = 0;
 
-  type SearchTerms = MetadataSearchDto & Pick<SmartSearchDto, 'query' | 'queryAssetId'>;
+  type SearchTerms = MetadataSearchDto & Pick<SmartSearchDto, 'query' | 'queryAssetId' | 'minScore'>;
   let searchQuery = $derived(page.url.searchParams.get(QueryParameter.QUERY));
   let terms = $derived<SearchTerms>(searchQuery ? JSON.parse(searchQuery) : {});
   let searchTermKeys = $derived(getObjectKeys(terms));
@@ -194,6 +194,8 @@
       description: $t('description'),
       queryAssetId: $t('query_asset_id'),
       ocr: $t('ocr'),
+      order: $t('search_sort_order'),
+      minScore: $t('search_minimum_score'),
     };
     return keyMap[key] || key;
   }
@@ -298,6 +300,8 @@
                 {/await}
               {:else if searchKey === 'rating'}
                 {$t('rating_count', { values: { count: value ?? 0 } })}
+              {:else if searchKey === 'order'}
+                {value === 'ASC' ? $t('oldest_first') : $t('newest_first')}
               {:else if value === null || value === ''}
                 {$t('unknown')}
               {:else}

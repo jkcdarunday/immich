@@ -39,6 +39,83 @@ beforeAll(async () => {
 });
 
 describe(SearchService.name, () => {
+  describe.each(['legacy', 'structured'] as const)('smart search ordering (%s)', (mode) => {
+    const search = (
+      repository: SearchRepository,
+      userId: string,
+      options: { order?: AssetOrder; minScore?: number },
+      page = 1,
+      size = 2,
+    ) =>
+      mode === 'legacy'
+        ? repository.searchSmart({ page, size }, { ...options, embedding: unitVector(0), userIds: [userId] })
+        : repository.searchSmartV3(
+            { take: size, skip: (page - 1) * size },
+            { ...options, embedding: unitVector(0) },
+            { userIds: [userId], lockedOwnerId: userId },
+          );
+
+    it.each([AssetOrder.Asc, AssetOrder.Desc])(
+      'should sort all matching dates before pagination (%s)',
+      async (order) => {
+        const { ctx } = setup();
+        const { user } = await ctx.newUser();
+        const repository = ctx.get(SearchRepository);
+        const ids: string[] = [];
+        for (const date of ['2024-01-01', '2024-01-01', '2025-01-01']) {
+          const { asset } = await ctx.newAsset({ ownerId: user.id, fileCreatedAt: new Date(date) });
+          await repository.upsert(asset.id, unitVector(0));
+          ids.push(asset.id);
+        }
+        const { asset: unrelated } = await ctx.newAsset({
+          ownerId: user.id,
+          fileCreatedAt: new Date('2026-01-01'),
+        });
+        await repository.upsert(unrelated.id, unitVector(1));
+
+        const expected = [...ids.slice(0, 2).toSorted(), ids[2]];
+        if (order === AssetOrder.Desc) {
+          expected.reverse();
+        }
+
+        const first = await search(repository, user.id, { order, minScore: 0.5 });
+        const second = await search(repository, user.id, { order, minScore: 0.5 }, 2);
+        expect(first.hasNextPage).toBe(true);
+        expect(second.hasNextPage).toBe(false);
+        expect([...first.items, ...second.items].map(({ id }) => id)).toEqual(expected);
+      },
+    );
+
+    it.each([
+      { minScore: undefined, count: 3 },
+      { minScore: -1, count: 3 },
+      { minScore: 0, count: 2 },
+      { minScore: 1, count: 1 },
+    ])('should preserve relevance and include scores at the $minScore boundary', async ({ minScore, count }) => {
+      const { ctx } = setup();
+      const { user } = await ctx.newUser();
+      const repository = ctx.get(SearchRepository);
+      const ids: string[] = [];
+      const embeddings = [
+        unitVector(0),
+        unitVector(1),
+        JSON.stringify(JSON.parse(unitVector(0)).map((value: number) => -value)),
+      ];
+      for (const [index, embedding] of embeddings.entries()) {
+        const { asset } = await ctx.newAsset({
+          ownerId: user.id,
+          fileCreatedAt: new Date(`${2024 + index}-01-01`),
+        });
+        await repository.upsert(asset.id, embedding);
+        ids.push(asset.id);
+      }
+
+      const result = await search(repository, user.id, { minScore }, 1, 10);
+      expect(result.items.map(({ id }) => id)).toEqual(ids.slice(0, count));
+      expect(result.hasNextPage).toBe(false);
+    });
+  });
+
   it('should work', () => {
     const { sut } = setup();
     expect(sut).toBeDefined();

@@ -1,5 +1,5 @@
 import { MediaType } from '#lib/constants.ts';
-import type { QueueResponseDto } from '@immich/sdk';
+import type { AssetOrder, QueueResponseDto } from '@immich/sdk';
 import type { ActionItem } from '@immich/ui';
 import type { DateTime } from 'luxon';
 import type { SvelteSet } from 'svelte/reactivity';
@@ -69,6 +69,8 @@ export type SearchFilter = {
   tagIds: SvelteSet<string> | null;
   location: SearchLocationFilter;
   queryAssetId?: string;
+  order?: AssetOrder;
+  minScore?: number;
   camera: SearchCameraFilter;
   date: SearchDateFilter;
   display: SearchDisplayFilters;

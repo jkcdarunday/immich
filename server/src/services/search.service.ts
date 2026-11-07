@@ -292,7 +292,7 @@ export class SearchService extends BaseService {
     // no cursor until a rank-aware pagination strategy for smart search is decided
     const { items } = await this.searchRepository.searchSmartV3(
       { take: dto.size },
-      { filter, withExif: dto.withExif, embedding },
+      { filter, withExif: dto.withExif, embedding, order: dto.order, minScore: dto.minScore },
       scope,
     );
 
